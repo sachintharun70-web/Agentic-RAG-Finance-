@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Valuation Desk — Car Price Model</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#15171A;
+    --bg-panel:#1C1F23;
+    --bg-raised:#242830;
+    --hairline:#33373E;
+    --text-primary:#ECEDEF;
+    --text-secondary:#8B919B;
+    --amber:#F2B705;
+    --amber-dim:#7A6017;
+    --up:#E8543E;
+    --down:#3FBE8B;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--body);}
+  body{padding:28px 18px 60px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+
+  /* ---- header ---- */
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--hairline);padding-bottom:18px;margin-bottom:22px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--amber);text-transform:uppercase;margin:0 0 6px;}
+  h1{font-family:var(--display);font-weight:700;font-size:30px;margin:0;letter-spacing:-0.01em;}
+  .team{font-family:var(--mono);font-size:11.5px;color:var(--text-secondary);text-align:right;line-height:1.6;}
+  .team b{color:var(--text-primary);font-weight:500;}
+
+  /* ---- status strip ---- */
+  .status{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hairline);border:1px solid var(--hairline);border-radius:10px;overflow:hidden;margin-bottom:26px;}
+  .status div{background:var(--bg-panel);padding:13px 16px;}
+  .status .k{font-family:var(--mono);font-size:10.5px;color:var(--text-secondary);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+  .status .v{font-family:var(--mono);font-size:16px;color:var(--text-primary);font-weight:500;}
+  .status .v.good{color:var(--down);}
+
+  /* ---- main grid ---- */
+  .grid{display:grid;grid-template-columns:1.05fr 1fr;gap:20px;}
+  @media (max-width:840px){.grid{grid-template-columns:1fr;}}
+
+  .panel{background:var(--bg-panel);border:1px solid var(--hairline);border-radius:14px;padding:22px;}
+  .panel h2{font-family:var(--display);font-size:15px;margin:0 0 16px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:8px;}
+  .panel h2::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--amber);display:inline-block;}
+
+  /* ---- form ---- */
+  .field{margin-bottom:16px;}
+  .field label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--text-secondary);margin-bottom:7px;text-transform:uppercase;letter-spacing:.04em;}
+  .field label span.val{color:var(--amber);text-transform:none;}
+  input[type=range]{width:100%;height:4px;border-radius:3px;background:var(--hairline);accent-color:var(--amber);}
+  select{width:100%;background:var(--bg-raised);color:var(--text-primary);border:1px solid var(--hairline);border-radius:8px;padding:9px 10px;font-family:var(--body);font-size:13.5px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .toggle{display:flex;align-items:center;justify-content:space-between;background:var(--bg-raised);border:1px solid var(--hairline);border-radius:8px;padding:10px 12px;margin-bottom:16px;}
+  .toggle label{font-family:var(--mono);font-size:11.5px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.04em;}
+  .switch{position:relative;width:38px;height:20px;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider-pill{position:absolute;cursor:pointer;inset:0;background:var(--hairline);border-radius:20px;transition:.2s;}
+  .slider-pill::before{content:"";position:absolute;width:14px;height:14px;left:3px;top:3px;background:var(--text-secondary);border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider-pill{background:var(--amber-dim);}
+  .switch input:checked + .slider-pill::before{transform:translateX(18px);background:var(--amber);}
+
+  /* ---- odometer ---- */
+  .readout{display:flex;flex-direction:column;align-items:center;padding:18px 10px 26px;}
+  .readout .label{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--text-secondary);text-transform:uppercase;margin-bottom:14px;}
+  .odometer{display:flex;background:#0E0F11;border:1px solid var(--hairline);border-radius:10px;padding:14px 16px;box-shadow:inset 0 2px 6px rgba(0,0,0,.5);}
+  .dollar{font-family:var(--mono);font-size:38px;color:var(--amber);margin-right:6px;display:flex;align-items:center;}
+  .digit{position:relative;width:26px;height:48px;overflow:hidden;border-right:1px solid #232629;}
+  .digit:last-child{border-right:none;}
+  .digit-strip{position:absolute;top:0;left:0;width:100%;transition:transform .55s cubic-bezier(.2,.9,.25,1);}
+  .digit-strip div{height:48px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:32px;font-weight:600;color:var(--text-primary);}
+  .comma{font-family:var(--mono);font-size:32px;color:var(--text-secondary);display:flex;align-items:flex-end;padding:0 1px 6px;}
+
+  .range-note{font-family:var(--mono);font-size:11px;color:var(--text-secondary);margin-top:10px;}
+
+  /* ---- factor bars ---- */
+  .factors{margin-top:4px;}
+  .factor-row{display:grid;grid-template-columns:120px 1fr 64px;align-items:center;gap:10px;margin-bottom:9px;}
+  .factor-row .fname{font-family:var(--mono);font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.03em;}
+  .bar-track{position:relative;height:8px;background:var(--hairline);border-radius:4px;overflow:hidden;}
+  .bar-fill{position:absolute;top:0;height:100%;border-radius:4px;transition:width .4s ease, left .4s ease;}
+  .bar-fill.up{background:var(--up);}
+  .bar-fill.down{background:var(--down);}
+  .factor-row .fval{font-family:var(--mono);font-size:11px;text-align:right;}
+  .fval.up{color:var(--up);}
+  .fval.down{color:var(--down);}
+
+  /* ---- terminal / pipeline check ---- */
+  .terminal{margin-top:24px;background:#0E0F11;border:1px solid var(--hairline);border-radius:14px;padding:20px 22px;font-family:var(--mono);font-size:12.5px;line-height:1.85;}
+  .terminal .t-head{display:flex;gap:7px;margin-bottom:12px;}
+  .t-head span{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .t-head .r{background:#E8543E;} .t-head .y{background:#F2B705;} .t-head .g{background:#3FBE8B;}
+  .terminal .prompt{color:var(--text-secondary);}
+  .terminal .cmd{color:var(--text-primary);}
+  .terminal .ok{color:var(--down);}
+  .terminal .comment{color:var(--text-secondary);}
+
+  footer{margin-top:30px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-secondary);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">Pipeline Verification &middot; Linear Regression</p>
+      <h1>Valuation Desk</h1>
+    </div>
+    <div class="team">Team &middot; <b>Tharun</b>, <b>Sachin</b>, <b>Maheshwari</b>, <b>Jothibasu</b><br>car_price_prediction / src / predict.py</div>
+  </header>
+
+  <div class="status">
+    <div><div class="k">Algorithm</div><div class="v">Linear Regression</div></div>
+    <div><div class="k">R&sup2; Score</div><div class="v good">0.9507</div></div>
+    <div><div class="k">RMSE</div><div class="v">$2,779.24</div></div>
+    <div><div class="k">MAE</div><div class="v">$2,138.52</div></div>
+  </div>
+
+  <div class="grid">
+
+    <!-- INPUT PANEL -->
+    <div class="panel">
+      <h2>Car specification</h2>
+
+      <div class="row2">
+        <div class="field">
+          <label>Brand</label>
+          <select id="brand">
+            <option>Audi</option><option>BMW</option><option>Chevrolet</option>
+            <option>Ford</option><option>Honda</option><option>Hyundai</option>
+            <option>Kia</option><option>Mercedes</option><option>Nissan</option>
+            <option selected>Toyota</option><option>Tesla</option><option>Volkswagen</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fuel type</label>
+          <select id="fuel">
+            <option selected>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Transmission</label>
+          <select id="transmission"><option selected>Automatic</option><option>Manual</option></select>
+        </div>
+        <div class="field">
+          <label>Owner history</label>
+          <select id="owner"><option selected>First</option><option>Second</option><option>Third</option></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Model year <span class="val" id="yearVal">2021</span></label>
+        <input type="range" id="year" min="2005" max="2025" value="2021" step="1">
+      </div>
+
+      <div class="field">
+        <label>Mileage (km) <span class="val" id="mileageVal">40,000</span></label>
+        <input type="range" id="mileage" min="0" max="250000" value="40000" step="1000">
+      </div>
+
+      <div class="field">
+        <label>Engine size (L) <span class="val" id="engineVal">1.8</span></label>
+        <input type="range" id="engine" min="1.0" max="4.0" value="1.8" step="0.1">
+      </div>
+
+      <div class="field">
+        <label>Horsepower <span class="val" id="hpVal">140</span></label>
+        <input type="range" id="hp" min="60" max="400" value="140" step="5">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Fuel economy (mpg) <span class="val" id="mpgVal">32</span></label>
+          <input type="range" id="mpg" min="10" max="45" value="32" step="1">
+        </div>
+        <div class="field">
+          <label>Seats <span class="val" id="seatsVal">5</span></label>
+          <input type="range" id="seats" min="2" max="7" value="5" step="1">
+        </div>
+      </div>
+
+      <div class="toggle">
+        <label>Prior accident on record</label>
+        <div class="switch"><input type="checkbox" id="accident"><span class="slider-pill"></span></div>
+      </div>
+
+      <p class="range-note">Adjust any control — the estimate recalculates live using the exact coefficients saved in <code>outputs/model/best_model.joblib</code>.</p>
+    </div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel">
+      <h2>Estimated price</h2>
+      <div class="readout">
+        <div class="label">USD, model output</div>
+        <div class="odometer" id="odometer">
+          <div class="dollar">$</div>
+          <!-- digits injected by JS -->
+        </div>
+      </div>
+
+      <h2 style="margin-top:8px;">What's moving the price</h2>
+      <div class="factors" id="factors"></div>
+    </div>
+  </div>
+
+  <div class="terminal">
+    <div class="t-head"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+    <div><span class="prompt">$</span> <span class="cmd">python3 generate_data.py</span> &nbsp;<span class="comment">›</span> <span class="ok">OK — 2,015 rows generated</span></div>
+    <div><span class="prompt">$</span> <span class="cmd">python3 preprocessing.py</span> &nbsp;<span class="comment">›</span> <span class="ok">OK — 1,975 rows after cleaning</span></div>
+    <div><span class="prompt">$</span> <span class="cmd">python3 eda.py</span> &nbsp;<span class="comment">›</span> <span class="ok">OK — 8 figures written to outputs/figures/</span></div>
+    <div><span class="prompt">$</span> <span class="cmd">python3 train_model.py</span> &nbsp;<span class="comment">›</span> <span class="ok">OK — best model: Linear Regression (R&sup2; 0.9507)</span></div>
+    <div><span class="prompt">$</span> <span class="cmd">python3 predict.py</span> &nbsp;<span class="comment">›</span> <span class="ok">OK — running live in this app ↑</span></div>
+  </div>
+
+  <footer>car_price_prediction &middot; Tharun, Sachin, Maheshwari, Jothibasu</footer>
+</div>
+
+<script>
+/* =========================================================
+   Exact model artifacts copied from:
+   outputs/model/best_model.joblib  (LinearRegression)
+   outputs/model/scaler.joblib      (StandardScaler)
+   outputs/model/feature_names.json
+   ========================================================= */
+const FEATURES = ["engine_size_l","horsepower","mileage_km","mpg","seats","accident_history","car_age",
+  "brand_BMW","brand_Chevrolet","brand_Ford","brand_Honda","brand_Hyundai","brand_Kia","brand_Mercedes",
+  "brand_Nissan","brand_Tesla","brand_Toyota","brand_Volkswagen",
+  "fuel_type_Electric","fuel_type_Hybrid","fuel_type_Petrol",
+  "transmission_Manual","owner_type_Second","owner_type_Third"];
+
+const COEF = [1834.8423651047196,1836.2231217759836,-3145.729092642172,-149.39444795054538,-149.50288405375272,
+  -860.9549921874856,-6442.221382576672,164.40576898597533,-3414.3165849096745,-3405.208179322881,
+  -3007.007808018625,-3898.5463912750774,-3976.367244112606,508.11927608496165,-3284.8103721499265,
+  1804.785322270247,-2984.400223553367,-2760.167466128982,874.7534732332662,432.01956297067653,
+  -466.97582233254974,-542.6636951720076,-540.3846346126741,-963.1036504115306];
+
+const INTERCEPT = 19744.449246835444;
+
+const MEAN = [2.476012658227848,160.50822784810126,135446.12721518986,25.09759493670886,4.991772151898735,
+  0.24367088607594936,11.381012658227847,0.07278481012658228,0.08987341772151898,0.09113924050632911,
+  0.07974683544303797,0.08607594936708861,0.0879746835443038,0.08481012658227848,0.0810126582278481,
+  0.07721518987341772,0.08417721518987342,0.08924050632911393,0.10886075949367088,0.15126582278481013,
+  0.4443037974683544,0.3829113924050633,0.30063291139240506,0.11012658227848102];
+
+const SCALE = [0.8545340279374838,58.0409986754124,72626.03627512025,8.440149335050243,1.0991633866795638,
+  0.4292963840459305,5.663375026964249,0.2597829508289942,0.28600032606375186,0.2878070175417177,
+  0.2709008631951161,0.28047616709382456,0.2832580777305096,0.278598939357953,0.2728545536264806,
+  0.2669325838601008,0.277653401983032,0.2850905792186709,0.3114644354274369,0.358307791768536,
+  0.4968882500357137,0.48609696354891885,0.4585332746705863,0.31304746949007906];
+
+const CURRENT_YEAR = 2026;
+
+function buildRawVector(input){
+  const row = {};
+  FEATURES.forEach(f => row[f] = 0);
+
+  row.engine_size_l = input.engine;
+  row.horsepower = input.hp;
+  row.mileage_km = input.mileage;
+  row.mpg = input.mpg;
+  row.seats = input.seats;
+  row.accident_history = input.accident ? 1 : 0;
+  row.car_age = CURRENT_YEAR - input.year;
+
+  if (input.brand !== "Audi"){ // Audi is the dropped reference category
+    const key = "brand_" + input.brand;
+    if (key in row) row[key] = 1;
+  }
+  if (input.fuel !== "Diesel"){ // Diesel is the dropped reference category
+    const key = "fuel_type_" + input.fuel;
+    if (key in row) row[key] = 1;
+  }
+  if (input.transmission === "Manual") row.transmission_Manual = 1;
+  if (input.owner === "Second") row.owner_type_Second = 1;
+  if (input.owner === "Third") row.owner_type_Third = 1;
+
+  return FEATURES.map(f => row[f]);
+}
+
+function predict(input){
+  const raw = buildRawVector(input);
+  const standardized = raw.map((v, i) => (v - MEAN[i]) / SCALE[i]);
+  let total = INTERCEPT;
+  const contributions = [];
+  for (let i = 0; i < FEATURES.length; i++){
+    const contrib = standardized[i] * COEF[i];
+    total += contrib;
+    contributions.push({ feature: FEATURES[i], contribution: contrib });
+  }
+  return { price: total, contributions };
+}
+
+/* ---------- odometer rendering ---------- */
+const odometerEl = document.getElementById("odometer");
+let digitEls = [];
+
+function buildOdometer(numDigits){
+  // remove existing digit columns (keep the $ sign)
+  digitEls = [];
+  document.querySelectorAll(".odometer .digit, .odometer .comma").forEach(el => el.remove());
+
+  for (let i = 0; i < numDigits; i++){
+    if (i > 0 && (numDigits - i) % 3 === 0){
+      const comma = document.createElement("div");
+      comma.className = "comma";
+      comma.textContent = ",";
+      odometerEl.appendChild(comma);
+    }
+    const digit = document.createElement("div");
+    digit.className = "digit";
+    const strip = document.createElement("div");
+    strip.className = "digit-strip";
+    for (let d = 0; d <= 9; d++){
+      const cell = document.createElement("div");
+      cell.textContent = d;
+      strip.appendChild(cell);
+    }
+    digit.appendChild(strip);
+    odometerEl.appendChild(digit);
+    digitEls.push(strip);
+  }
+}
+
+function setOdometer(value){
+  const intVal = Math.max(0, Math.round(value));
+  const str = String(intVal).padStart(digitEls.length, "0").slice(-digitEls.length);
+  for (let i = 0; i < digitEls.length; i++){
+    const d = parseInt(str[i], 10);
+    digitEls[i].style.transform = `translateY(-${d * 48}px)`;
+  }
+}
+
+buildOdometer(6); // up to $999,999
+
+/* ---------- factor breakdown ---------- */
+const FRIENDLY = {
+  car_age:"Car age", mileage_km:"Mileage", horsepower:"Horsepower", engine_size_l:"Engine size",
+  mpg:"Fuel economy", seats:"Seats", accident_history:"Accident history",
+  transmission_Manual:"Manual gearbox", owner_type_Second:"2nd owner", owner_type_Third:"3rd owner",
+  fuel_type_Electric:"Electric", fuel_type_Hybrid:"Hybrid", fuel_type_Petrol:"Petrol"
+};
+function friendlyName(f){
+  if (f.startsWith("brand_")) return f.replace("brand_","") + " badge";
+  return FRIENDLY[f] || f;
+}
+
+function renderFactors(contributions){
+  const top = [...contributions].sort((a,b) => Math.abs(b.contribution) - Math.abs(a.contribution)).slice(0,6);
+  const maxAbs = Math.max(...top.map(c => Math.abs(c.contribution)), 1);
+  const el = document.getElementById("factors");
+  el.innerHTML = "";
+  top.forEach(c => {
+    const isUp = c.contribution >= 0;
+    const pct = (Math.abs(c.contribution) / maxAbs) * 100;
+    const row = document.createElement("div");
+    row.className = "factor-row";
+    row.innerHTML = `
+      <div class="fname">${friendlyName(c.feature)}</div>
+      <div class="bar-track">
+        <div class="bar-fill ${isUp ? 'up' : 'down'}" style="width:${pct}%; left:0;"></div>
+      </div>
+      <div class="fval ${isUp ? 'up' : 'down'}">${isUp ? '+' : '-'}$${Math.abs(Math.round(c.contribution)).toLocaleString()}</div>
+    `;
+    el.appendChild(row);
+  });
+}
+
+/* ---------- wire up inputs ---------- */
+const ids = ["brand","fuel","transmission","owner","year","mileage","engine","hp","mpg","seats","accident"];
+function readInputs(){
+  return {
+    brand: document.getElementById("brand").value,
+    fuel: document.getElementById("fuel").value,
+    transmission: document.getElementById("transmission").value,
+    owner: document.getElementById("owner").value,
+    year: parseInt(document.getElementById("year").value, 10),
+    mileage: parseInt(document.getElementById("mileage").value, 10),
+    engine: parseFloat(document.getElementById("engine").value),
+    hp: parseInt(document.getElementById("hp").value, 10),
+    mpg: parseInt(document.getElementById("mpg").value, 10),
+    seats: parseInt(document.getElementById("seats").value, 10),
+    accident: document.getElementById("accident").checked
+  };
+}
+
+function recalc(){
+  const input = readInputs();
+  document.getElementById("yearVal").textContent = input.year;
+  document.getElementById("mileageVal").textContent = input.mileage.toLocaleString();
+  document.getElementById("engineVal").textContent = input.engine.toFixed(1);
+  document.getElementById("hpVal").textContent = input.hp;
+  document.getElementById("mpgVal").textContent = input.mpg;
+  document.getElementById("seatsVal").textContent = input.seats;
+
+  const result = predict(input);
+  setOdometer(result.price);
+  renderFactors(result.contributions);
+}
+
+ids.forEach(id => {
+  document.getElementById(id).addEventListener("input", recalc);
+});
+
+recalc();
+</script>
+</body>
+</html>
